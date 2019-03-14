@@ -1,0 +1,160 @@
+---
+title: "Project 1: coursera Reproducable research"
+
+---
+###Reading in the data of a fitness tracker
+```{r}
+dat <-  read.csv("C:\\Users\\Lucas\\Downloads\\repdata_data_activity\\activity.csv",na.strings = c("NA","NaN","","#DIV/0!"))
+str(dat)
+dat$date <- as.Date(dat$date, format = "%Y-%m-%d")
+head(dat)
+```
+
+Including packages that are used in the project
+```{r}
+library(ggplot2)
+library(dplyr)
+library(mice)
+```
+
+### 1. What is the total number of steps taken per day?
+
+
+Using dplyr, total number of steps is calculated per day using group_by function
+Since there are missing values in the dataset, we need to specify na.rm=TRUE
+```{r }
+sumdat <- dat %>%
+            group_by(date) %>%
+            summarize(sumStep=sum(steps),na.rm=TRUE)
+total_step <- aggregate(steps ~ date, data = dat, sum, na.rm = TRUE)
+str(total_step)
+```
+
+Chunk of the code used to create a plot 
+```{r}
+newtheme <- theme_bw() + 
+          theme(plot.title = element_text(color = "Black"))
+
+barfill <- "#4271AE"
+barlines <- "#1F3552"
+```
+### 2. Histogram of the total number of steps taken each day?
+
+```{r}
+ggplot(sumdat, aes(x=sumStep)) + 
+  ggtitle("Total Numer of Steps Taken Each Day") +
+  geom_histogram(aes(y = ..count..), binwidth = 500,
+                 colour = barlines, fill = barfill)+
+  scale_y_continuous(name="Frequency",limits=c(0,8),expand = c(0,0))+
+  scale_x_continuous("Steps Count",limits=c(0,22000),expand=c(0,0))+
+  theme_bw()+
+  theme(panel.grid = element_blank())
+```
+### 3. Mean and median number of steps taken each day
+```{r}
+mean(sumdat$sumStep,na.rm=TRUE)
+median(sumdat$sumStep,na.rm=TRUE)
+```
+
+Preparing data to create average number of steps per interval
+```{r}
+avgdat <- dat %>%
+  group_by(interval) %>%
+  summarize(avgStep=mean(steps,na.rm=TRUE))
+```
+
+### 4. Time series plot of the average number of steps taken
+
+
+```{r}
+ggplot(avgdat, aes(x=interval,y=avgStep)) + 
+  ggtitle("Time Series 5 min. Interval: Average Numer of Steps Taken Each Day") +
+  geom_line()+
+  scale_y_continuous(name="Average No. of Steps",limits=c(0,200),expand = c(0,0))+
+  scale_x_continuous("Interval",limits=c(0,2200),expand=c(0,0))+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  theme(legend.position = "none") 
+```
+
+## 5.The 5-minute interval that, on average, contains the maximum number of steps
+```{r}
+avgdat$interval[which.max(avgdat$avgStep)]
+
+```
+### 6.Code to describe and show a strategy for imputing missing data
+```{r}
+#Surpressing the output as the code prints all the iterations
+
+sum(is.na(dat))
+md.pattern(dat)
+
+imputeDat <- mice(dat, m=2, maxit = 50, method = 'pmm', seed = 500)
+```
+Referring to documentation:
+m  - Refers to 5 imputed data sets
+maxit - Refers to no. of iterations taken to impute missing values
+method - Refers to method used in imputation. we used predictive mean matching.
+
+```{r}
+summary(imputeDat)
+head(imputeDat$imp$steps)
+completeDat <- complete(imputeDat,2)
+```
+###7.Histogram of the total number of steps taken each day after missing values are imputed
+Preparing the data using imputed values
+```{r}
+sumCompdat <- completeDat %>%
+  group_by(date) %>%
+  summarize(sumStep=sum(steps))
+
+str(sumCompdat)
+
+```
+
+###Histogram
+
+```{r}
+ggplot(sumCompdat, aes(x=sumStep)) + 
+  ggtitle("Total Numer of Steps Taken Each Day (Imputed)") +
+  geom_histogram(aes(y = ..count..), binwidth = 500,
+                 colour = barlines, fill = barfill)+
+  scale_y_continuous(name="Frequency",limits=c(0,8),expand = c(0,0))+
+  scale_x_continuous("Steps Count",limits=c(0,22000),expand=c(0,0))+
+  theme_bw()+
+  theme(panel.grid = element_blank())
+```
+
+##Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+Preparing the data
+
+```{r}
+
+completeDat$day <- weekdays(completeDat$date)
+completeDat$week <- ""
+completeDat[completeDat$day %in% "Saturday" | completeDat$day %in% "Sunday", ]$week <- "weekend"
+completeDat[!(completeDat$day %in% "Saturday" | completeDat$day %in% "Sunday"), ]$week <- "weekday"
+completeDat$week <- factor(completeDat$week)
+
+#average using dplyr
+avg_step_imp <- completeDat %>%
+                  group_by(interval,week) %>%
+                  summarize(avgStep=mean(steps))
+```
+
+Creating a plot
+```{r}
+
+
+ggplot(avg_step_imp, aes(x=interval,y=avgStep)) + 
+  ggtitle("Average Number of Steps Taken (across all weekdays/weekends)") +
+  geom_line()+
+  facet_grid(week ~ .) +
+  scale_y_continuous(name="Average No. of Steps",limits=c(0,200),expand = c(0,0))+
+  scale_x_continuous("5 min Interval",limits=c(0,2200),expand=c(0,0))+
+  theme_bw()+
+  theme(panel.grid = element_blank())+
+  theme(legend.position = "none") 
+```
+
