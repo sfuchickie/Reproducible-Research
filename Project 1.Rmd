@@ -158,3 +158,7 @@ ggplot(avg_step_imp, aes(x=interval,y=avgStep)) +
   theme(legend.position = "none") 
 ```
 
+```{r}
+library(knitr)
+knit("Project 1.Rmd")
+```
