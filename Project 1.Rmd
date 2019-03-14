@@ -160,5 +160,5 @@ ggplot(avg_step_imp, aes(x=interval,y=avgStep)) +
 
 ```{r}
 library(knitr)
-knit("Project 1.Rmd")
-```
+knit2html("Project 1.Rmd")
+  ```
